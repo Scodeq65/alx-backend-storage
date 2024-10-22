@@ -1,0 +1,2 @@
+// script that list in a collection
+db.school.find().forEach(printjson);
