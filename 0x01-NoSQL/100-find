@@ -1,0 +1,2 @@
+// A string thatlist all doc starting with Holberton in school.
+db.school.find({ name: { $regex: /^Holberton/i } }).forEach(printjson);
