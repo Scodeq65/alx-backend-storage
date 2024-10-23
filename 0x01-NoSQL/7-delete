@@ -1,0 +1,2 @@
+// script that deletes
+db.school.deleteMany({ name: "Holberton school" });
