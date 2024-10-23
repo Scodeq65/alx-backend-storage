@@ -1,0 +1,2 @@
+// A script that displays the nos of doc in the school collection of the MongoDB
+print(db.school.countDocuments({}));
