@@ -11,6 +11,7 @@ from functools import wraps
 # Initialize Redis client
 redis_client = redis.Redis()
 
+
 def count_requests(method: Callable) -> Callable:
     """Decorator to count the number of requests to a specific URL."""
     @wraps(method)
@@ -20,8 +21,11 @@ def count_requests(method: Callable) -> Callable:
         return method(url)
     return wrapper
 
+
 def cache_result(expiration: int = 10) -> Callable:
-    """Decorator to cache the result of a function for a set expiration time."""
+    """Decorator to cache the result of a
+    function for a set expiration time.
+    """
     def decorator(method: Callable) -> Callable:
         @wraps(method)
         def wrapper(url: str) -> str:
@@ -29,13 +33,14 @@ def cache_result(expiration: int = 10) -> Callable:
             cached_result = redis_client.get(f"cache:{url}")
             if cached_result:
                 return cached_result.decode("utf-8")
-            
+
             # If not cached, fetch and cache the result
             result = method(url)
             redis_client.setex(f"cache:{url}", expiration, result)
             return result
         return wrapper
     return decorator
+
 
 @count_requests
 @cache_result(expiration=10)
