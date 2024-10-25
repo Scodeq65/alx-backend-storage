@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Cache module for storing and retrieving data in Redis with random keys and counting method calls.
+Cache module for storing and retrieving data in Redis with random keys,
+tracking call count and storing call history of method inputs and outputs.
 """
 
 import redis
@@ -9,24 +10,41 @@ from typing import Union, Callable, Optional
 from functools import wraps
 
 def count_calls(method: Callable) -> Callable:
+    """Decorator that counts the number of times a method is called."""
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        key = method.__qualname__
+        self._redis.incr(key)
+        return method(self, *args, **kwargs)
+    return wrapper
+
+def call_history(method: Callable) -> Callable:
     """
-    Decorator that counts the number of times a method is called.
+    Decorator to store history of function calls, including input parameters and output.
     
     Parameters:
     - method (Callable): The method to be decorated.
     
     Returns:
-    - Callable: The wrapped method with call counting.
+    - Callable: The wrapped method with call history tracking.
     """
     @wraps(method)
     def wrapper(self, *args, **kwargs):
-        # Use the qualified name of the method as the key for counting
-        key = method.__qualname__
-        # Increment the count for this key in Redis
-        self._redis.incr(key)
-        # Call the original method and return its result
-        return method(self, *args, **kwargs)
-    
+        # Generate Redis keys for inputs and outputs
+        inputs_key = f"{method.__qualname__}:inputs"
+        outputs_key = f"{method.__qualname__}:outputs"
+
+        # Log inputs to Redis
+        self._redis.rpush(inputs_key, str(args))
+
+        # Call the original method to get the output
+        result = method(self, *args, **kwargs)
+
+        # Log the output to Redis
+        self._redis.rpush(outputs_key, str(result))
+
+        return result
+
     return wrapper
 
 class Cache:
@@ -38,6 +56,7 @@ class Cache:
         self._redis.flushdb()
 
     @count_calls
+    @call_history
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Store data in Redis and return a randomly generated key.
@@ -52,42 +71,17 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: Optional[Callable] = None) -> Optional[Union[str, bytes, int, float]]:
-        """
-        Retrieve data from Redis by key and optionally convert it using a callable.
-
-        Parameters:
-        - key (str): The key under which the data is stored.
-        - fn (Optional[Callable]): A callable function to convert data.
-
-        Returns:
-        - Optional[Union[str, bytes, int, float]]: The retrieved data, converted if fn is provided.
-        """
+    def get(
+        self, key: str, fn: Optional[Callable] = None
+    ) -> Optional[Union[str, bytes, int, float]]:
+        """Retrieve data from Redis by key and optionally convert it using a callable."""
         data = self._redis.get(key)
-        if data is None:
-            return None
-        return fn(data) if fn else data
+        return fn(data) if fn and data else data
 
     def get_str(self, key: str) -> Optional[str]:
-        """
-        Retrieve data as a UTF-8 string.
-
-        Parameters:
-        - key (str): The key under which the data is stored.
-
-        Returns:
-        - Optional[str]: The retrieved data as a string.
-        """
+        """Retrieve data as a UTF-8 string."""
         return self.get(key, fn=lambda d: d.decode("utf-8"))
 
     def get_int(self, key: str) -> Optional[int]:
-        """
-        Retrieve data as an integer.
-
-        Parameters:
-        - key (str): The key under which the data is stored.
-
-        Returns:
-        - Optional[int]: The retrieved data as an integer.
-        """
+        """Retrieve data as an integer."""
         return self.get(key, fn=int)
