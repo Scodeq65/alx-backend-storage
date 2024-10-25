@@ -9,6 +9,7 @@ import uuid
 from typing import Union, Callable, Optional
 from functools import wraps
 
+
 def count_calls(method: Callable) -> Callable:
     """Decorator that counts the number of times a method is called."""
     @wraps(method)
@@ -18,13 +19,15 @@ def count_calls(method: Callable) -> Callable:
         return method(self, *args, **kwargs)
     return wrapper
 
+
 def call_history(method: Callable) -> Callable:
     """
-    Decorator to store history of function calls, including input parameters and output.
-    
+    Decorator to store history of function calls,
+    including input parameters and output.
+
     Parameters:
     - method (Callable): The method to be decorated.
-    
+
     Returns:
     - Callable: The wrapped method with call history tracking.
     """
@@ -46,6 +49,7 @@ def call_history(method: Callable) -> Callable:
         return result
 
     return wrapper
+
 
 class Cache:
     """Cache class for storing data with unique keys in Redis."""
@@ -74,7 +78,8 @@ class Cache:
     def get(
         self, key: str, fn: Optional[Callable] = None
     ) -> Optional[Union[str, bytes, int, float]]:
-        """Retrieve data from Redis by key and optionally convert it using a callable."""
+        """Retrieve data from Redis by key and optionally
+        convert it using a callable."""
         data = self._redis.get(key)
         return fn(data) if fn and data else data
 
@@ -89,12 +94,13 @@ class Cache:
 
 def replay(method: Callable):
     """
-    Display the history of calls for a given method, including inputs and outputs.
+    Display the history of calls for a given method,
+    including inputs and outputs.
 
     Parameters:
     - method (Callable): The method whose call history to display.
     """
-    redis_client = method.__self__._redis  # Access Redis instance from the method's self
+    redis_client = method.__self__._redis
     method_name = method.__qualname__
 
     # Retrieve the inputs and outputs from Redis
@@ -109,5 +115,6 @@ def replay(method: Callable):
     # Display each input/output pair
     for i, (input_, output) in enumerate(zip(inputs, outputs)):
         # Decode the byte strings from Redis and display
-        print(f"{method_name}(*{input_.decode('utf-8')}) -> {output.decode('utf-8')}")
-
+        input_decoded = input_.decode('utf-8')
+        output_decoded = output.decode('utf-8')
+        print(f"{method_name}(*{input_decoded}) -> {output_decoded}")
